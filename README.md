@@ -60,9 +60,9 @@ A single-page web app for planning Indian modular switchboard layouts room by ro
 
 All in a single `index.html` file. No `node_modules` were harmed in the making of this project.
 
-## 📸 Screenshots
+## 📸 Preview
 
-Open the file in your browser and try it out — the UI speaks for itself.
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/64ed2939-2df7-4124-b6be-c589195d76f9" />
 
 ## 🤖 Credits
 
