@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SwitchBoard Planner — Indian Modular Layout</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+/* ══════════ RESET ══════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1a1d23; --side:#22252d; --canvas:#2a2d35;
+  --plate:#f5f2ed; --slot:#ddd8d0;
+  --acc:#5b9bd5; --acc2:#4a8bc5; --accd:#3a6a99;
+  --t1:#e0e0e0; --t2:#9a9a9a; --td:#2a2a2a;
+  --brd:#3a3d45; --red:#d9534f;
+  --mono:'Consolas','Courier New',monospace;
+  --sans:'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  --r:6px;
+}
+html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--t1);overflow:hidden}
+button{cursor:pointer;font-family:inherit;border:none;outline:none}
+input,select{font-family:inherit;outline:none}
+#root{height:100vh}
+
+/* ══════════ SIDEBAR ══════════ */
+.app{display:flex;height:100vh}
+.side{width:260px;min-width:260px;background:var(--side);border-right:1px solid var(--brd);display:flex;flex-direction:column;z-index:10}
+.side-hd{padding:16px 16px 12px;border-bottom:1px solid var(--brd)}
+.side-hd h1{font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc);font-family:var(--mono);margin-bottom:2px}
+.side-hd small{font-size:10px;color:var(--t2);letter-spacing:.5px}
+.add-room{padding:10px 16px;display:flex;gap:6px;border-bottom:1px solid var(--brd)}
+.add-room input{flex:1;padding:6px 10px;background:#181a20;border:1px solid var(--brd);border-radius:var(--r);color:var(--t1);font-size:12px}
+.add-room input::placeholder{color:var(--t2)}
+.add-room button{padding:6px 12px;background:var(--acc);color:#fff;border-radius:var(--r);font-size:12px;font-weight:600}
+.rooms{flex:1;overflow-y:auto;padding:6px 0}
+.rm{display:flex;align-items:center;padding:8px 16px;cursor:pointer;border-left:3px solid transparent;transition:.15s}
+.rm:hover{background:rgba(255,255,255,.04)}
+.rm.on{background:rgba(91,155,213,.12);border-left-color:var(--acc)}
+.rm .n{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rm .c{font-size:10px;color:var(--t2);margin-right:8px;font-family:var(--mono)}
+.rm .x{width:22px;height:22px;background:0;color:var(--t2);border-radius:3px;font-size:14px;display:flex;align-items:center;justify-content:center;visibility:hidden}
+.rm:hover .x{visibility:visible}
+.rm .x:hover{background:rgba(255,255,255,.1);color:var(--red)}
+.rm .arrows{display:flex;flex-direction:column;gap:1px;visibility:hidden;margin-right:4px}
+.rm:hover .arrows{visibility:visible}
+.rm .arr{width:18px;height:14px;background:0;color:var(--t2);border-radius:2px;font-size:10px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.rm .arr:hover{background:rgba(255,255,255,.12);color:var(--t1)}
+.rm .arr:disabled{opacity:.2;cursor:default;background:0}
+.side-ft{padding:10px 16px;border-top:1px solid var(--brd);display:flex;gap:6px}
+.side-ft button{flex:1;padding:7px;border-radius:var(--r);font-size:11px;font-weight:600;letter-spacing:.5px}
+.bex{background:var(--acc);color:#fff}
+.bex:hover{background:var(--acc2)}
+.brs{background:0;color:var(--red);border:1px solid var(--red)}
+.brs:hover{background:rgba(217,83,79,.15)}
+
+/* ══════════ MAIN ══════════ */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.bar{padding:10px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:12px;background:var(--side);min-height:50px}
+.bar .title{font-size:16px;font-weight:700;flex:1;font-family:var(--mono)}
+.bar button{padding:6px 14px;border-radius:var(--r);font-size:12px;font-weight:600;background:rgba(255,255,255,.08);color:var(--t1)}
+.bar button:hover{background:rgba(255,255,255,.14)}
+.canvas{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:28px}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--t2);gap:10px}
+.empty .ei{font-size:48px;opacity:.3}
+
+/* ══════════ PALETTE ══════════ */
+.pal{padding:10px 20px;border-bottom:1px solid var(--brd);background:rgba(0,0,0,.15);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pal-l{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-right:6px;font-weight:700}
+.pi{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(255,255,255,.07);border:1px solid var(--brd);border-radius:var(--r);cursor:grab;font-size:11px;color:var(--t1);user-select:none;white-space:nowrap}
+.pi:hover{background:rgba(91,155,213,.2);border-color:var(--acc)}
+.pi:active{cursor:grabbing}
+.pi .mb{font-size:9px;background:var(--accd);color:#fff;padding:1px 5px;border-radius:10px;font-weight:700}
+
+/* ══════════ PANEL ══════════ */
+.panel{background:var(--canvas);border:1px solid var(--brd);border-radius:8px;overflow:hidden}
+.panel-hd{padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--brd);background:rgba(0,0,0,.2)}
+.panel-hd .pt{font-size:13px;font-weight:700;font-family:var(--mono);flex:1}
+.panel-hd .pm{font-size:10px;color:var(--t2);font-family:var(--mono)}
+.panel-hd button{width:24px;height:24px;background:0;color:var(--t2);border-radius:3px;font-size:14px;display:flex;align-items:center;justify-content:center}
+.panel-hd button:hover{background:rgba(255,255,255,.1);color:var(--t1)}
+.panel-hd button.dg:hover{color:var(--red)}
+.add-panel{display:flex;gap:8px;align-items:center;padding:12px 0}
+.add-panel input{padding:7px 12px;background:#181a20;border:1px solid var(--brd);border-radius:var(--r);color:var(--t1);font-size:12px;width:180px}
+.add-panel select{padding:7px 10px;background:#181a20;border:1px solid var(--brd);border-radius:var(--r);color:var(--t1);font-size:12px}
+.add-panel button{padding:7px 14px;background:var(--acc);color:#fff;border-radius:var(--r);font-size:12px;font-weight:600}
+
+/* ══════════ PLATE ══════════ */
+.plate-wrap{padding:20px;display:flex;justify-content:center}
+.plate{
+  background:var(--plate);border-radius:12px;padding:14px;
+  display:inline-flex;flex-direction:column;gap:10px;
+  box-shadow:0 2px 12px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.08);
+  border:2px solid #ccc8c0;
+}
+.row{display:flex;align-items:stretch;gap:8px}
+
+/* ══════════ PAIR ══════════ */
+.pair{
+  width:110px;height:76px;position:relative;
+  background:var(--slot);border-radius:6px;border:2px dashed #bbb5aa;
+  display:flex;align-items:center;justify-content:center;
+  transition:.15s;
+}
+.pair.full{border:2px solid #aaa59d;background:#fff}
+.pair.hovering{background:rgba(91,155,213,.2);border-color:var(--acc);border-style:solid}
+.pair .tag{position:absolute;top:2px;font-size:8px;color:#b0a89d;font-family:var(--mono);pointer-events:none;z-index:2}
+.pair .tag.tl{left:5px}
+.pair .tag.tr{right:5px}
+
+/* Pair inner: two halves for 1-module items */
+.halves{display:flex;width:100%;height:100%}
+.half{flex:1;display:flex;align-items:center;justify-content:center;position:relative;transition:.15s}
+.halves .half:first-child{border-right:1px dashed #ccc8c0}
+.half.hovering{background:rgba(91,155,213,.2)}
+.half.filled{background:rgba(255,255,255,.7);cursor:pointer}
+
+/* No inner divider on 2-mod full pair */
+.pair.full.is2 .half{border:none}
+
+/* ══════════ COMP VISUALS ══════════ */
+.cv1{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;gap:2px;padding:2px;text-align:center}
+.cv1 svg{display:block;max-width:36px;max-height:42px}
+.cv2{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;gap:2px;padding:4px;text-align:center;cursor:pointer}
+.cv2 svg{display:block;max-width:96px;max-height:52px}
+.clbl{font-size:8px;color:var(--accd);font-weight:700;max-width:100%;overflow-wrap:break-word;word-break:break-word;white-space:normal;line-height:1.1;text-align:center}
+
+/* ══════════ CTX MENU ══════════ */
+.ctx{position:fixed;background:var(--side);border:1px solid var(--brd);border-radius:var(--r);padding:4px 0;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:1000}
+.ci{padding:7px 16px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.ci:hover{background:rgba(255,255,255,.08)}
+.ci.dg{color:var(--red)}
+.csep{height:1px;background:var(--brd);margin:4px 0}
+
+/* ══════════ MODAL ══════════ */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:900;display:flex;align-items:center;justify-content:center}
+.mdl{background:var(--side);border:1px solid var(--brd);border-radius:8px;padding:20px 24px;min-width:320px;max-width:400px}
+.mdl h3{font-size:14px;margin-bottom:14px;font-family:var(--mono)}
+.mdl input,.mdl select{width:100%;padding:8px 12px;background:#181a20;border:1px solid var(--brd);border-radius:var(--r);color:var(--t1);font-size:13px;margin-bottom:14px}
+.mbts{display:flex;gap:8px;justify-content:flex-end}
+.mbts button{padding:7px 16px;border-radius:var(--r);font-size:12px;font-weight:600}
+.bok{background:var(--acc);color:#fff}
+.bok:hover{background:var(--acc2)}
+.bcc{background:0;color:var(--t2);border:1px solid var(--brd)}
+.bcc:hover{background:rgba(255,255,255,.05)}
+
+/* ══════════ SCROLL ══════════ */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:0}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
+
+/* ══════════ PRINT ══════════ */
+.pv{display:none}
+body.printing .app{display:none!important}
+body.printing .pv{display:block!important;position:static!important;padding:16px 24px;background:#fff;color:#222}
+.pv-room{margin-bottom:10px}
+.pv-room:not(:first-child){page-break-before:always}
+.pvrm{font-size:24px;font-weight:800;font-family:var(--mono);padding:14px 0 8px;border-bottom:3px solid #333;margin:0 0 16px;color:#111;text-transform:uppercase;letter-spacing:1px}
+.pvh{font-size:14px;font-weight:700;font-family:var(--mono);padding:8px 0 6px;color:#222;margin:14px 0 6px}
+/* Plate visual */
+.pv-plate{display:inline-flex;flex-direction:column;gap:6px;padding:10px;background:#eae6e0;border-radius:8px;border:2px solid #bbb;margin:6px 0 10px}
+.pv-row{display:flex;gap:6px}
+.pv-pair{width:100px;height:64px;border:1.5px solid #bbb;border-radius:4px;background:#f5f2ed;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.pv-pair.pv-empty{background:#f5f2ed;border-style:dashed}
+.pv-halves{display:flex;width:100%;height:100%}
+.pv-half{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:1px}
+.pv-halves .pv-half:first-child{border-right:1px dashed #ccc}
+.pv-half-empty{background:#f5f2ed}
+.pv-2m{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;padding:2px}
+.pv-lbl{font-size:7px;color:#1a6faa;font-weight:700;text-align:center;max-width:100%;overflow-wrap:break-word;word-break:break-word;line-height:1.1}
+.pv-tag{position:absolute;top:1px;font-size:7px;color:#aaa;font-family:var(--mono)}
+.pv-tag-l{left:3px}
+.pv-tag-r{right:3px}
+/* Summary table */
+.pvt{width:100%;border-collapse:collapse;margin:6px 0 16px;font-size:11px;color:#222}
+.pvt td,.pvt th{padding:3px 8px;border:1px solid #ccc;text-align:left}
+.pvt th{background:#eee;font-weight:700}
+@media print{
+  body{background:#fff!important;color:#222!important;overflow:visible!important}
+  body.printing .app{display:none!important}
+  body.printing .pv{display:block!important;position:static!important}
+  .pv-room:not(:first-child){page-break-before:always}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+/* ═══════════════════════════════════════════════
+   COMPONENT DEFINITIONS
+   ═══════════════════════════════════════════════ */
+const COMPS = [
+  { id: 'socket-6a',   name: '6A Socket',      m: 2, icon: '🔌' },
+  { id: 'socket-16a',  name: '16A Socket',     m: 2, icon: '🔌' },
+  { id: 'socket-5pin', name: '5-Pin Socket',   m: 2, icon: '⏣'  },
+  { id: 'switch-1way', name: '1-Way Switch',   m: 1, icon: '◻'  },
+  { id: 'switch-2way', name: '2-Way Switch',   m: 1, icon: '◻'  },
+  { id: 'fan-dimmer',  name: 'Fan Regulator',  m: 1, icon: '🌀' },
+  { id: 'indicator',   name: 'Indicator Light', m: 1, icon: '💡' },
+  { id: 'bell',        name: 'Bell Switch',    m: 1, icon: '🔔' },
+  { id: 'usb',         name: 'USB Charger',    m: 1, icon: '🔋' },
+  { id: 'blank',       name: 'Blank Plate',    m: 1, icon: '▬'  },
+  { id: 'tv',          name: 'TV / DTH',       m: 1, icon: '📺' },
+  { id: 'ethernet',    name: 'Ethernet/Data',  m: 1, icon: '🌐' },
+];
+
+function gc(id) {
+  return COMPS.find(c => c.id === id);
+}
+
+/* ═══════════════════════════════════════════════
+   SVG COMPONENTS
+   ═══════════════════════════════════════════════ */
+
+// 1-module SVG (small, for switches etc)
+function Svg1({ id }) {
+  const map = {
+    'switch-1way': <><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><rect x="8" y="8" width="16" height="18" rx="3" fill="#fff" stroke="#bbb" strokeWidth="1"/><line x1="16" y1="12" x2="16" y2="22" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round"/><text x="16" y="33" textAnchor="middle" fontSize="6" fill="#888" fontWeight="700">1W</text></>,
+    'switch-2way': <><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><rect x="8" y="8" width="16" height="18" rx="3" fill="#fff" stroke="#bbb" strokeWidth="1"/><line x1="12" y1="17" x2="20" y2="13" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round"/><text x="16" y="33" textAnchor="middle" fontSize="6" fill="#888" fontWeight="700">2W</text></>,
+    'bell':        <><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><circle cx="16" cy="16" r="8" fill="#fff" stroke="#bbb" strokeWidth="1"/><text x="16" y="19" textAnchor="middle" fontSize="10" fill="#888">♪</text><text x="16" y="33" textAnchor="middle" fontSize="6" fill="#888" fontWeight="700">BELL</text></>,
+    'usb':         <><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><rect x="10" y="9" width="12" height="7" rx="1.5" fill="none" stroke="#888" strokeWidth="1.2"/><rect x="13" y="11" width="6" height="3" rx=".5" fill="#aaa"/><text x="16" y="33" textAnchor="middle" fontSize="6" fill="#888" fontWeight="700">USB</text></>,
+    'blank':       <><rect x="3" y="3" width="26" height="32" rx="4" fill="#eae6e0" stroke="#ccc" strokeWidth="1"/></>,
+    'tv':          <><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><circle cx="16" cy="16" r="6" fill="none" stroke="#888" strokeWidth="1.5"/><circle cx="16" cy="16" r="2" fill="#888"/><text x="16" y="33" textAnchor="middle" fontSize="6" fill="#888" fontWeight="700">TV</text></>,
+    'ethernet':    <><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><rect x="9" y="9" width="14" height="10" rx="2" fill="none" stroke="#888" strokeWidth="1.2"/><line x1="12" y1="19" x2="12" y2="22" stroke="#aaa" strokeWidth="1"/><line x1="16" y1="19" x2="16" y2="22" stroke="#aaa" strokeWidth="1"/><line x1="20" y1="19" x2="20" y2="22" stroke="#aaa" strokeWidth="1"/><text x="16" y="33" textAnchor="middle" fontSize="5.5" fill="#888" fontWeight="700">DATA</text></>,
+    'fan-dimmer':  <><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><circle cx="16" cy="15" r="7" fill="none" stroke="#888" strokeWidth="1.3"/><line x1="16" y1="15" x2="16" y2="9" stroke="#666" strokeWidth="1.3" strokeLinecap="round"/><text x="16" y="33" textAnchor="middle" fontSize="5" fill="#888" fontWeight="700">FAN</text></>,
+    'indicator':   <><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><circle cx="16" cy="15" r="5" fill="#ffcc00" stroke="#cc9900" strokeWidth="1"/><circle cx="16" cy="15" r="2" fill="#fff" opacity=".6"/><text x="16" y="33" textAnchor="middle" fontSize="5" fill="#888" fontWeight="700">LED</text></>,
+  };
+  return <svg width="32" height="38" viewBox="0 0 32 38">{map[id]}</svg>;
+}
+
+// 2-module SVG (wide, for sockets / fan regulator)
+function Svg2({ id }) {
+  const map = {
+    'socket-6a':   <><rect x="2" y="2" width="76" height="38" rx="6" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><circle cx="28" cy="14" r="2.5" fill="none" stroke="#666" strokeWidth="1.2"/><circle cx="52" cy="14" r="2.5" fill="none" stroke="#666" strokeWidth="1.2"/><circle cx="40" cy="24" r="2.5" fill="none" stroke="#666" strokeWidth="1.2"/><text x="40" y="39" textAnchor="middle" fontSize="6" fill="#888" fontWeight="700">6A</text></>,
+    'socket-16a':  <><rect x="2" y="2" width="76" height="38" rx="6" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><circle cx="28" cy="14" r="3" fill="none" stroke="#666" strokeWidth="1.2"/><circle cx="52" cy="14" r="3" fill="none" stroke="#666" strokeWidth="1.2"/><circle cx="40" cy="24" r="3" fill="none" stroke="#666" strokeWidth="1.2"/><text x="40" y="39" textAnchor="middle" fontSize="6" fill="#888" fontWeight="700">16A</text></>,
+    'socket-5pin': <><rect x="2" y="2" width="76" height="38" rx="6" fill="#f0ece6" stroke="#999" strokeWidth="1.5"/><circle cx="22" cy="14" r="3.5" fill="none" stroke="#666" strokeWidth="1.2"/><circle cx="58" cy="14" r="3.5" fill="none" stroke="#666" strokeWidth="1.2"/><circle cx="40" cy="13" r="2" fill="none" stroke="#666" strokeWidth="1"/><circle cx="30" cy="26" r="3" fill="none" stroke="#666" strokeWidth="1.2"/><circle cx="50" cy="26" r="3" fill="none" stroke="#666" strokeWidth="1.2"/><text x="40" y="39" textAnchor="middle" fontSize="6" fill="#888" fontWeight="700">5-PIN</text></>,
+  };
+  return <svg width="80" height="42" viewBox="0 0 80 42">{map[id]}</svg>;
+}
+
+/* ═══════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════ */
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+const LS_KEY = 'switchboard-v3';
+
+// Global drag ref — not React state to avoid re-renders during drag
+let DRAG_COMP_ID = null;
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      // Migrate panel sizes
+      s.rooms.forEach(r => r.panels.forEach(p => {
+        if (![6, 12, 18].includes(p.moduleCount)) {
+          const ns = p.moduleCount <= 6 ? 6 : p.moduleCount <= 12 ? 12 : 18;
+          while (p.slots.length < ns) p.slots.push(null);
+          p.slots.length = ns;
+          p.moduleCount = ns;
+        }
+      }));
+      return s;
+    }
+  } catch (e) { console.error(e); }
+  const rooms = ['Living Room', 'Master Bedroom', 'Kitchen', 'Bathroom']
+    .map(name => ({ id: uid(), name, panels: [] }));
+  return { rooms, activeRoomId: rooms[0].id };
+}
+
+/* ═══════════════════════════════════════════════
+   HALF SLOT COMPONENT (1 module drop target / display)
+   ═══════════════════════════════════════════════ */
+function HalfSlot({ slotData, slotIdx, roomId, panelId, onDrop1, onCtx }) {
+  const [hov, setHov] = useState(false);
+
+  function handleDragOver(e) {
+    if (!DRAG_COMP_ID) return;
+    const comp = gc(DRAG_COMP_ID);
+    // Only accept 1-module components on a half
+    if (comp && comp.m === 1 && !slotData) {
+      e.preventDefault();
+      e.stopPropagation();
+      setHov(true);
+    }
+  }
+
+  function handleDrop(e) {
+    if (!DRAG_COMP_ID) return;
+    const comp = gc(DRAG_COMP_ID);
+    if (comp && comp.m === 1 && !slotData) {
+      e.preventDefault();
+      e.stopPropagation();
+      setHov(false);
+      onDrop1(roomId, panelId, slotIdx, DRAG_COMP_ID);
+      DRAG_COMP_ID = null;
+    }
+  }
+
+  if (slotData) {
+    const comp = gc(slotData.compId);
+    return (
+      <div className="half filled"
+        onContextMenu={e => { e.preventDefault(); onCtx(e.clientX, e.clientY, roomId, panelId, slotIdx); }}>
+        <div className="cv1">
+          <Svg1 id={comp.id} />
+          {slotData.label && <div className="clbl">{slotData.label}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={"half" + (hov ? " hovering" : "")}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setHov(false)}
+      onDrop={handleDrop}
+    />
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   PAIR BOX COMPONENT (the fundamental 2-slot unit)
+   ═══════════════════════════════════════════════ */
+function PairBox({ idx0, slots, roomId, panelId, onDrop1, onDrop2, onCtx }) {
+  const [hov, setHov] = useState(false);
+  const s0 = slots[idx0];
+  const s1 = slots[idx0 + 1];
+
+  // Is this pair occupied by a 2-module component?
+  const is2mod = s0 && s0.isStart && gc(s0.compId) && gc(s0.compId).m === 2;
+  const bothFilled = s0 && s1;
+
+  // ── CASE 1: Pair holds a 2-module component ──
+  if (is2mod) {
+    const comp = gc(s0.compId);
+    return (
+      <div className="pair full is2"
+        onContextMenu={e => { e.preventDefault(); onCtx(e.clientX, e.clientY, roomId, panelId, idx0); }}>
+        <span className="tag tl">{idx0 + 1}</span>
+        <span className="tag tr">{idx0 + 2}</span>
+        <div className="cv2">
+          <Svg2 id={comp.id} />
+          {s0.label && <div className="clbl">{s0.label}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // ── CASE 2: Individual 1-module slots ──
+  // The pair-level dragOver/drop handles 2-module drops
+  function handleDragOver(e) {
+    if (!DRAG_COMP_ID) return;
+    const comp = gc(DRAG_COMP_ID);
+    if (comp && comp.m === 2 && !s0 && !s1) {
+      e.preventDefault();
+      setHov(true);
+    }
+  }
+
+  function handleDrop(e) {
+    if (!DRAG_COMP_ID) return;
+    const comp = gc(DRAG_COMP_ID);
+    if (comp && comp.m === 2 && !s0 && !s1) {
+      e.preventDefault();
+      setHov(false);
+      onDrop2(roomId, panelId, idx0, DRAG_COMP_ID);
+      DRAG_COMP_ID = null;
+    }
+  }
+
+  return (
+    <div className={"pair" + (bothFilled ? " full" : "") + (hov ? " hovering" : "")}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setHov(false)}
+      onDrop={handleDrop}>
+      <span className="tag tl">{idx0 + 1}</span>
+      <span className="tag tr">{idx0 + 2}</span>
+      <div className="halves">
+        <HalfSlot slotData={s0} slotIdx={idx0} roomId={roomId} panelId={panelId} onDrop1={onDrop1} onCtx={onCtx} />
+        <HalfSlot slotData={s1} slotIdx={idx0 + 1} roomId={roomId} panelId={panelId} onDrop1={onDrop1} onCtx={onCtx} />
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   MAIN APP
+   ═══════════════════════════════════════════════ */
+function App() {
+  const [state, setState] = useState(loadState);
+  const [ctx, setCtx] = useState(null);
+  const [modal, setModal] = useState(null);
+  const [newRoomName, setNewRoomName] = useState('');
+  const [newPanelName, setNewPanelName] = useState('');
+  const [newPanelSize, setNewPanelSize] = useState(6);
+
+  // Persist
+  useEffect(() => { localStorage.setItem(LS_KEY, JSON.stringify(state)); }, [state]);
+
+  // Close context menu
+  useEffect(() => {
+    const close = () => setCtx(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, []);
+
+  const activeRoom = state.rooms.find(r => r.id === state.activeRoomId);
+
+  // ── Immutable updaters ──
+  function updatePanel(roomId, panelId, fn) {
+    setState(prev => ({
+      ...prev,
+      rooms: prev.rooms.map(r => {
+        if (r.id !== roomId) return r;
+        return {
+          ...r,
+          panels: r.panels.map(p => {
+            if (p.id !== panelId) return p;
+            return fn({ ...p, slots: [...p.slots] });
+          })
+        };
+      })
+    }));
+  }
+
+  function updateRoom(roomId, fn) {
+    setState(prev => ({
+      ...prev,
+      rooms: prev.rooms.map(r => r.id === roomId ? fn(r) : r)
+    }));
+  }
+
+  // ── Drop: 1-module onto a half slot ──
+  function handleDrop1(roomId, panelId, slotIdx, compId) {
+    updatePanel(roomId, panelId, panel => {
+      if (panel.slots[slotIdx]) return panel; // already filled
+      panel.slots[slotIdx] = { compId, label: '', isStart: true };
+      return panel;
+    });
+  }
+
+  // ── Drop: 2-module onto a pair ──
+  function handleDrop2(roomId, panelId, pairStart, compId) {
+    updatePanel(roomId, panelId, panel => {
+      if (panel.slots[pairStart] || panel.slots[pairStart + 1]) return panel;
+      panel.slots[pairStart] = { compId, label: '', isStart: true };
+      panel.slots[pairStart + 1] = { compId, label: '', isStart: false };
+      return panel;
+    });
+  }
+
+  // ── Context menu show ──
+  function showCtx(x, y, roomId, panelId, slotIdx) {
+    setCtx({ x, y, roomId, panelId, slotIdx });
+  }
+
+  // ── Context menu actions ──
+  function ctxAction(action) {
+    if (!ctx) return;
+    const { roomId, panelId, slotIdx } = ctx;
+    if (action === 'remove') {
+      updatePanel(roomId, panelId, panel => {
+        const sd = panel.slots[slotIdx];
+        if (!sd) return panel;
+        const comp = gc(sd.compId);
+        if (comp && comp.m === 2) {
+          const start = sd.isStart ? slotIdx : slotIdx - 1;
+          panel.slots[start] = null;
+          panel.slots[start + 1] = null;
+        } else {
+          panel.slots[slotIdx] = null;
+        }
+        return panel;
+      });
+    } else if (action === 'label') {
+      const room = state.rooms.find(r => r.id === roomId);
+      const panel = room && room.panels.find(p => p.id === panelId);
+      const sd = panel && panel.slots[slotIdx];
+      setModal({
+        type: 'input',
+        title: 'Component Label',
+        value: sd ? sd.label || '' : '',
+        onOk: (val) => {
+          updatePanel(roomId, panelId, p => {
+            const sd = p.slots[slotIdx];
+            if (!sd) return p;
+            p.slots[slotIdx] = { ...sd, label: val };
+            const comp = gc(sd.compId);
+            if (comp && comp.m === 2) {
+              const other = sd.isStart ? slotIdx + 1 : slotIdx - 1;
+              if (p.slots[other]) p.slots[other] = { ...p.slots[other], label: val };
+            }
+            return p;
+          });
+        }
+      });
+    }
+    setCtx(null);
+  }
+
+  // ── Move room ──
+  function moveRoom(roomId, dir) {
+    setState(s => {
+      const rooms = [...s.rooms];
+      const idx = rooms.findIndex(r => r.id === roomId);
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= rooms.length) return s;
+      [rooms[idx], rooms[newIdx]] = [rooms[newIdx], rooms[idx]];
+      return { ...s, rooms };
+    });
+  }
+
+  // ── Add room ──
+  function addRoom() {
+    const name = newRoomName.trim();
+    if (!name) return;
+    const room = { id: uid(), name, panels: [] };
+    setState(s => ({ ...s, rooms: [...s.rooms, room], activeRoomId: room.id }));
+    setNewRoomName('');
+  }
+
+  /* ── SVG strings for print ── */
+  const SVG1_MAP = {
+    'switch-1way': '<svg width="28" height="32" viewBox="0 0 32 38"><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><rect x="8" y="8" width="16" height="18" rx="3" fill="#fff" stroke="#bbb" stroke-width="1"/><line x1="16" y1="12" x2="16" y2="22" stroke="#ccc" stroke-width="1.5" stroke-linecap="round"/><text x="16" y="33" text-anchor="middle" font-size="6" fill="#888" font-weight="700">1W</text></svg>',
+    'switch-2way': '<svg width="28" height="32" viewBox="0 0 32 38"><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><rect x="8" y="8" width="16" height="18" rx="3" fill="#fff" stroke="#bbb" stroke-width="1"/><line x1="12" y1="17" x2="20" y2="13" stroke="#ccc" stroke-width="1.5" stroke-linecap="round"/><text x="16" y="33" text-anchor="middle" font-size="6" fill="#888" font-weight="700">2W</text></svg>',
+    'bell':        '<svg width="28" height="32" viewBox="0 0 32 38"><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><circle cx="16" cy="16" r="8" fill="#fff" stroke="#bbb" stroke-width="1"/><text x="16" y="19" text-anchor="middle" font-size="10" fill="#888">♪</text><text x="16" y="33" text-anchor="middle" font-size="6" fill="#888" font-weight="700">BELL</text></svg>',
+    'usb':         '<svg width="28" height="32" viewBox="0 0 32 38"><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><rect x="10" y="9" width="12" height="7" rx="1.5" fill="none" stroke="#888" stroke-width="1.2"/><rect x="13" y="11" width="6" height="3" rx=".5" fill="#aaa"/><text x="16" y="33" text-anchor="middle" font-size="6" fill="#888" font-weight="700">USB</text></svg>',
+    'blank':       '<svg width="28" height="32" viewBox="0 0 32 38"><rect x="3" y="3" width="26" height="32" rx="4" fill="#eae6e0" stroke="#ccc" stroke-width="1"/></svg>',
+    'tv':          '<svg width="28" height="32" viewBox="0 0 32 38"><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><circle cx="16" cy="16" r="6" fill="none" stroke="#888" stroke-width="1.5"/><circle cx="16" cy="16" r="2" fill="#888"/><text x="16" y="33" text-anchor="middle" font-size="6" fill="#888" font-weight="700">TV</text></svg>',
+    'ethernet':    '<svg width="28" height="32" viewBox="0 0 32 38"><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><rect x="9" y="9" width="14" height="10" rx="2" fill="none" stroke="#888" stroke-width="1.2"/><text x="16" y="33" text-anchor="middle" font-size="5.5" fill="#888" font-weight="700">DATA</text></svg>',
+    'fan-dimmer':  '<svg width="28" height="32" viewBox="0 0 32 38"><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><circle cx="16" cy="15" r="7" fill="none" stroke="#888" stroke-width="1.3"/><line x1="16" y1="15" x2="16" y2="9" stroke="#666" stroke-width="1.3" stroke-linecap="round"/><text x="16" y="33" text-anchor="middle" font-size="5" fill="#888" font-weight="700">FAN</text></svg>',
+    'indicator':   '<svg width="28" height="32" viewBox="0 0 32 38"><rect x="3" y="3" width="26" height="32" rx="4" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><circle cx="16" cy="15" r="5" fill="#ffcc00" stroke="#cc9900" stroke-width="1"/><circle cx="16" cy="15" r="2" fill="#fff" opacity=".6"/><text x="16" y="33" text-anchor="middle" font-size="5" fill="#888" font-weight="700">LED</text></svg>',
+  };
+  const SVG2_MAP = {
+    'socket-6a':   '<svg width="72" height="36" viewBox="0 0 80 42"><rect x="2" y="2" width="76" height="38" rx="6" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><circle cx="28" cy="14" r="2.5" fill="none" stroke="#666" stroke-width="1.2"/><circle cx="52" cy="14" r="2.5" fill="none" stroke="#666" stroke-width="1.2"/><circle cx="40" cy="24" r="2.5" fill="none" stroke="#666" stroke-width="1.2"/><text x="40" y="39" text-anchor="middle" font-size="6" fill="#888" font-weight="700">6A</text></svg>',
+    'socket-16a':  '<svg width="72" height="36" viewBox="0 0 80 42"><rect x="2" y="2" width="76" height="38" rx="6" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><circle cx="28" cy="14" r="3" fill="none" stroke="#666" stroke-width="1.2"/><circle cx="52" cy="14" r="3" fill="none" stroke="#666" stroke-width="1.2"/><circle cx="40" cy="24" r="3" fill="none" stroke="#666" stroke-width="1.2"/><text x="40" y="39" text-anchor="middle" font-size="6" fill="#888" font-weight="700">16A</text></svg>',
+    'socket-5pin': '<svg width="72" height="36" viewBox="0 0 80 42"><rect x="2" y="2" width="76" height="38" rx="6" fill="#f0ece6" stroke="#999" stroke-width="1.5"/><circle cx="22" cy="14" r="3.5" fill="none" stroke="#666" stroke-width="1.2"/><circle cx="58" cy="14" r="3.5" fill="none" stroke="#666" stroke-width="1.2"/><circle cx="40" cy="13" r="2" fill="none" stroke="#666" stroke-width="1"/><circle cx="30" cy="26" r="3" fill="none" stroke="#666" stroke-width="1.2"/><circle cx="50" cy="26" r="3" fill="none" stroke="#666" stroke-width="1.2"/><text x="40" y="39" text-anchor="middle" font-size="6" fill="#888" font-weight="700">5-PIN</text></svg>',
+  };
+
+  // ── Print ──
+  function handlePrint() {
+    const div = document.createElement('div');
+    div.className = 'pv';
+
+    state.rooms.forEach(room => {
+      const sec = document.createElement('div');
+      sec.className = 'pv-room';
+
+      /* ── Room Title ── */
+      const rmHdr = document.createElement('div');
+      rmHdr.className = 'pvrm';
+      rmHdr.textContent = room.name;
+      sec.appendChild(rmHdr);
+
+      room.panels.forEach(panel => {
+        /* ── Panel Title ── */
+        const ph = document.createElement('div');
+        ph.className = 'pvh';
+        ph.textContent = '▸ ' + panel.name + ' (' + panel.moduleCount + ' modules)';
+        sec.appendChild(ph);
+
+        /* ── Visual Plate Diagram ── */
+        const plate = document.createElement('div');
+        plate.className = 'pv-plate';
+        const rowCount = panel.moduleCount / 6;
+        for (let ri = 0; ri < rowCount; ri++) {
+          const row = document.createElement('div');
+          row.className = 'pv-row';
+          for (let pi = 0; pi < 3; pi++) {
+            const idx0 = ri * 6 + pi * 2;
+            const s0 = panel.slots[idx0];
+            const s1 = panel.slots[idx0 + 1];
+            const pair = document.createElement('div');
+            pair.className = 'pv-pair';
+            pair.innerHTML = '<span class="pv-tag pv-tag-l">' + (idx0+1) + '</span><span class="pv-tag pv-tag-r">' + (idx0+2) + '</span>';
+
+            const is2mod = s0 && s0.isStart && gc(s0.compId) && gc(s0.compId).m === 2;
+
+            if (is2mod) {
+              const comp = gc(s0.compId);
+              const wrap = document.createElement('div');
+              wrap.className = 'pv-2m';
+              wrap.innerHTML = (SVG2_MAP[comp.id] || '') + (s0.label ? '<div class="pv-lbl">' + s0.label + '</div>' : '');
+              pair.appendChild(wrap);
+            } else {
+              const halves = document.createElement('div');
+              halves.className = 'pv-halves';
+              [s0, s1].forEach(sd => {
+                const half = document.createElement('div');
+                half.className = 'pv-half' + (!sd ? ' pv-half-empty' : '');
+                if (sd && sd.isStart) {
+                  const comp = gc(sd.compId);
+                  half.innerHTML = (SVG1_MAP[comp.id] || '') + (sd.label ? '<div class="pv-lbl">' + sd.label + '</div>' : '');
+                }
+                halves.appendChild(half);
+              });
+              pair.appendChild(halves);
+              if (!s0 && !s1) pair.classList.add('pv-empty');
+            }
+            row.appendChild(pair);
+          }
+          plate.appendChild(row);
+        }
+        sec.appendChild(plate);
+
+        /* ── Summary Table ── */
+        const tbl = document.createElement('table');
+        tbl.className = 'pvt';
+        let html = '<tr><th>Pair</th><th>Slot</th><th>Component</th><th>Label</th></tr>';
+        let hasComps = false;
+        let blankCount = 0;
+        let blankSlots = [];
+        for (let i = 0; i < panel.moduleCount; i++) {
+          const sd = panel.slots[i];
+          if (sd && sd.isStart) {
+            hasComps = true;
+            const c = gc(sd.compId);
+            if (c.id === 'blank') {
+              blankCount++;
+              blankSlots.push(i + 1);
+            } else {
+              const pn = Math.floor(i / 2) + 1;
+              html += '<tr><td>' + pn + '</td><td>' + (c.m === 2 ? (i+1)+'-'+(i+2) : (i+1)) + '</td><td>' + c.name + '</td><td>' + (sd.label || '—') + '</td></tr>';
+            }
+          }
+        }
+        if (blankCount > 0) {
+          html += '<tr><td colspan="2">Slots ' + blankSlots.join(', ') + '</td><td>Blank Plate × ' + blankCount + '</td><td>—</td></tr>';
+        }
+        if (hasComps) {
+          tbl.innerHTML = html;
+          sec.appendChild(tbl);
+        }
+      });
+
+      div.appendChild(sec);
+    });
+
+    document.body.appendChild(div);
+    document.body.classList.add('printing');
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        window.print();
+        document.body.classList.remove('printing');
+        div.remove();
+      }, 150);
+    });
+  }
+
+  /* ═══ RENDER ═══ */
+  return (
+    <div className="app">
+      {/* ── Sidebar ── */}
+      <div className="side">
+        <div className="side-hd">
+          <h1>⚡ SwitchBoard</h1>
+          <small>Indian Modular Layout Planner</small>
+        </div>
+        <div className="add-room">
+          <input placeholder="New room name…" maxLength={30} value={newRoomName}
+            onChange={e => setNewRoomName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addRoom()} />
+          <button onClick={addRoom}>+ Add</button>
+        </div>
+        <div className="rooms">
+          {state.rooms.map(room => {
+            const tm = room.panels.reduce((s, p) => s + p.moduleCount, 0);
+            const um = room.panels.reduce((s, p) => s + p.slots.filter(Boolean).length, 0);
+            return (
+              <div key={room.id}
+                className={"rm" + (room.id === state.activeRoomId ? " on" : "")}
+                onClick={() => setState(s => ({ ...s, activeRoomId: room.id }))}>
+                <div className="arrows">
+                  <button className="arr" title="Move up" disabled={state.rooms.indexOf(room) === 0}
+                    onClick={e => { e.stopPropagation(); moveRoom(room.id, -1); }}>▲</button>
+                  <button className="arr" title="Move down" disabled={state.rooms.indexOf(room) === state.rooms.length - 1}
+                    onClick={e => { e.stopPropagation(); moveRoom(room.id, 1); }}>▼</button>
+                </div>
+                <span className="n">{room.name}</span>
+                <span className="c">{room.panels.length}P · {um}/{tm}M</span>
+                <button className="x" title="Delete" onClick={e => {
+                  e.stopPropagation();
+                  if (confirm('Delete room "' + room.name + '"?')) {
+                    setState(s => {
+                      const rooms = s.rooms.filter(r => r.id !== room.id);
+                      return { ...s, rooms, activeRoomId: s.activeRoomId === room.id ? (rooms[0]?.id || null) : s.activeRoomId };
+                    });
+                  }
+                }}>✕</button>
+              </div>
+            );
+          })}
+        </div>
+        <div className="side-ft">
+          <button className="bex" onClick={handlePrint}>⎙ Print / Export</button>
+          <button className="brs" onClick={() => { if (confirm('Delete ALL data?')) setState({ rooms: [], activeRoomId: null }); }}>Reset</button>
+        </div>
+      </div>
+
+      {/* ── Main ── */}
+      <div className="main">
+        <div className="bar">
+          <div className="title">{activeRoom ? activeRoom.name : 'Select a Room'}</div>
+          {activeRoom && (
+            <button onClick={() => setModal({
+              type: 'input', title: 'Rename Room', value: activeRoom.name,
+              onOk: v => { if (v) updateRoom(activeRoom.id, r => ({ ...r, name: v })); }
+            })}>✎ Rename</button>
+          )}
+        </div>
+
+        {/* Palette */}
+        <div className="pal">
+          <span className="pal-l">Components</span>
+          {COMPS.map(comp => (
+            <div key={comp.id} className="pi" draggable
+              onDragStart={() => { DRAG_COMP_ID = comp.id; }}
+              onDragEnd={() => { DRAG_COMP_ID = null; }}>
+              <span>{comp.icon}</span>
+              {comp.name}
+              <span className="mb">{comp.m}M</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Canvas */}
+        <div className="canvas">
+          {!activeRoom ? (
+            <div className="empty"><div className="ei">⚡</div><p>Create or select a room</p></div>
+          ) : (
+            <>
+              {activeRoom.panels.map(panel => {
+                const filled = panel.slots.filter(Boolean).length;
+                const rowCount = panel.moduleCount / 6;
+                return (
+                  <div key={panel.id} className="panel">
+                    <div className="panel-hd">
+                      <span className="pt">{panel.name}</span>
+                      <span className="pm">{filled}/{panel.moduleCount} modules · {rowCount} row{rowCount > 1 ? 's' : ''}</span>
+                      <button title="Rename" onClick={() => setModal({
+                        type: 'input', title: 'Rename Panel', value: panel.name,
+                        onOk: v => updatePanel(activeRoom.id, panel.id, p => ({ ...p, name: v }))
+                      })}>✎</button>
+                      <button title="Resize" onClick={() => setModal({
+                        type: 'resize', roomId: activeRoom.id, panelId: panel.id, current: panel.moduleCount
+                      })}>⇔</button>
+                      <button className="dg" title="Delete" onClick={() => {
+                        if (confirm('Delete "' + panel.name + '"?'))
+                          updateRoom(activeRoom.id, r => ({ ...r, panels: r.panels.filter(p => p.id !== panel.id) }));
+                      }}>✕</button>
+                    </div>
+                    <div className="plate-wrap">
+                      <div className="plate">
+                        {Array.from({ length: rowCount }, (_, ri) => (
+                          <div className="row" key={ri}>
+                            {[0, 1, 2].map(pi => {
+                              const idx0 = ri * 6 + pi * 2;
+                              return (
+                                <PairBox
+                                  key={pi}
+                                  idx0={idx0}
+                                  slots={panel.slots}
+                                  roomId={activeRoom.id}
+                                  panelId={panel.id}
+                                  onDrop1={handleDrop1}
+                                  onDrop2={handleDrop2}
+                                  onCtx={showCtx}
+                                />
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Add panel */}
+              <div className="add-panel">
+                <input placeholder="Panel name (e.g. Near Door)" maxLength={40}
+                  value={newPanelName} onChange={e => setNewPanelName(e.target.value)} />
+                <select value={newPanelSize} onChange={e => setNewPanelSize(+e.target.value)}>
+                  <option value={6}>6 Modules (1 row)</option>
+                  <option value={12}>12 Modules (2 rows)</option>
+                  <option value={18}>18 Modules (3 rows)</option>
+                </select>
+                <button onClick={() => {
+                  const name = newPanelName.trim() || 'Panel ' + (activeRoom.panels.length + 1);
+                  updateRoom(activeRoom.id, r => ({
+                    ...r,
+                    panels: [...r.panels, { id: uid(), name, moduleCount: newPanelSize, slots: new Array(newPanelSize).fill(null) }]
+                  }));
+                  setNewPanelName('');
+                }}>+ Add Panel</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Context Menu ── */}
+      {ctx && (
+        <div className="ctx"
+          style={{ left: Math.min(ctx.x, window.innerWidth - 180), top: Math.min(ctx.y, window.innerHeight - 100) }}
+          onClick={e => e.stopPropagation()}>
+          <div className="ci" onClick={() => ctxAction('label')}>🏷️ Add / Edit Label</div>
+          <div className="csep" />
+          <div className="ci dg" onClick={() => ctxAction('remove')}>✕ Remove Component</div>
+        </div>
+      )}
+
+      {/* ── Modal ── */}
+      {modal && modal.type === 'resize' && (
+        <div className="mover" onClick={() => setModal(null)}>
+          <div className="mdl" onClick={e => e.stopPropagation()}>
+            <h3>Resize Panel</h3>
+            <p style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 12 }}>Current: {modal.current} modules</p>
+            <select id="resize-sel" defaultValue={modal.current}>
+              <option value={6}>6 Modules (1 row)</option>
+              <option value={12}>12 Modules (2 rows)</option>
+              <option value={18}>18 Modules (3 rows)</option>
+            </select>
+            <div className="mbts">
+              <button className="bcc" onClick={() => setModal(null)}>Cancel</button>
+              <button className="bok" onClick={() => {
+                const newSize = +document.getElementById('resize-sel').value;
+                updatePanel(modal.roomId, modal.panelId, p => {
+                  const slots = [...p.slots];
+                  if (newSize > p.moduleCount) {
+                    while (slots.length < newSize) slots.push(null);
+                  } else {
+                    for (let i = newSize; i < slots.length; i++) {
+                      if (slots[i]) {
+                        const sd = slots[i];
+                        const c = gc(sd.compId);
+                        if (c && c.m === 2 && !sd.isStart && i - 1 >= 0) slots[i - 1] = null;
+                        if (c && c.m === 2 && sd.isStart && i + 1 < slots.length) slots[i + 1] = null;
+                      }
+                    }
+                    slots.length = newSize;
+                  }
+                  return { ...p, moduleCount: newSize, slots };
+                });
+                setModal(null);
+              }}>Resize</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modal && modal.type === 'input' && (
+        <div className="mover" onClick={() => setModal(null)}>
+          <div className="mdl" onClick={e => e.stopPropagation()}>
+            <h3>{modal.title}</h3>
+            <input autoFocus defaultValue={modal.value} id="modal-inp"
+              onKeyDown={e => {
+                if (e.key === 'Enter') { modal.onOk(e.target.value.trim()); setModal(null); }
+                if (e.key === 'Escape') setModal(null);
+              }} />
+            <div className="mbts">
+              <button className="bcc" onClick={() => setModal(null)}>Cancel</button>
+              <button className="bok" onClick={() => {
+                modal.onOk(document.getElementById('modal-inp').value.trim());
+                setModal(null);
+              }}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
